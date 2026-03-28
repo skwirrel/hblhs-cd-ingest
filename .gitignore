@@ -1,0 +1,11 @@
+# Local configuration (created by setup.sh)
+config.ini
+
+# Runtime data
+data/
+
+# Vendored JS (downloaded by setup.sh)
+public/vendor/
+
+# Claude Code settings
+.claude/

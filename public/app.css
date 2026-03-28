@@ -1,0 +1,581 @@
+/* ============================================================
+   CD Ingest System — Stylesheet
+   Design principles: clarity, legibility, unambiguous state.
+   ============================================================ */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg:               #f0f2f5;
+    --surface:          #ffffff;
+    --border:           #dde1e7;
+    --text:             #1a1a2e;
+    --text-muted:       #5a6175;
+
+    --primary:          #1a4a7a;
+    --primary-hover:    #143d68;
+    --primary-text:     #ffffff;
+
+    --secondary:        #5a6175;
+    --secondary-hover:  #474f61;
+    --secondary-text:   #ffffff;
+
+    --warning:          #b35900;
+    --warning-bg:       #fff7ed;
+    --warning-border:   #fed7aa;
+
+    --error:            #991b1b;
+    --error-bg:         #fef2f2;
+    --error-border:     #fecaca;
+
+    --success:          #14532d;
+    --success-bg:       #f0fdf4;
+    --success-border:   #bbf7d0;
+
+    --danger:           #b91c1c;
+    --danger-hover:     #991b1b;
+
+    --radius:           10px;
+    --radius-sm:        6px;
+    --shadow:           0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+}
+
+/* ── Base ──────────────────────────────────────────────────── */
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                 'Helvetica Neue', Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.55;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+
+.app-header {
+    background: var(--primary);
+    color: #fff;
+    padding: 14px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    flex-shrink: 0;
+}
+
+.app-header h1 {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.session-counter {
+    font-size: 14px;
+    opacity: 0.8;
+    white-space: nowrap;
+}
+
+/* ── Main layout ───────────────────────────────────────────── */
+
+.app-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+}
+
+/* ── Screen card ───────────────────────────────────────────── */
+
+.screen {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 48px 52px;
+    width: 100%;
+    max-width: 680px;
+}
+
+.screen h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: var(--text);
+    line-height: 1.3;
+}
+
+/* ── Status message (large centred text) ───────────────────── */
+
+.status-message {
+    font-size: 26px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--text);
+    padding: 24px 0;
+    line-height: 1.4;
+}
+
+/* ── Disc info strip ───────────────────────────────────────── */
+
+.disc-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    color: var(--success);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 100px;
+    margin-bottom: 24px;
+}
+
+/* ── Banners ───────────────────────────────────────────────── */
+
+.banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-radius: var(--radius-sm);
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    border-width: 2px;
+    border-style: solid;
+}
+
+.banner h2 {
+    font-size: 22px;
+    margin: 0;
+}
+
+.banner-icon {
+    font-size: 28px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.banner-success {
+    background: var(--success-bg);
+    border-color: var(--success-border);
+}
+.banner-success h2,
+.banner-success .banner-icon { color: var(--success); }
+
+.banner-error {
+    background: var(--error-bg);
+    border-color: var(--error-border);
+}
+.banner-error h2,
+.banner-error .banner-icon { color: var(--error); }
+
+.banner-warning {
+    background: var(--warning-bg);
+    border-color: var(--warning-border);
+}
+.banner-warning h2,
+.banner-warning .banner-icon { color: var(--warning); }
+
+/* ── Catalogue card ────────────────────────────────────────── */
+
+.catalogue-card {
+    background: #f8f9fb;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 24px 28px;
+    margin-bottom: 28px;
+}
+
+.catalogue-card dl {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    row-gap: 10px;
+    column-gap: 16px;
+}
+
+.catalogue-card dt {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    padding-top: 3px;
+}
+
+.catalogue-card dd {
+    font-size: 17px;
+    line-height: 1.45;
+}
+
+/* ── Summary list ──────────────────────────────────────────── */
+
+.summary-list {
+    background: #f8f9fb;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px 28px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    row-gap: 10px;
+    column-gap: 16px;
+}
+
+.summary-list dt {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    padding-top: 3px;
+}
+
+.summary-list dd {
+    font-size: 17px;
+}
+
+.summary-row-warning dt,
+.summary-row-warning dd {
+    color: var(--warning);
+}
+
+/* ── Forms ─────────────────────────────────────────────────── */
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 14px 18px;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    outline: none;
+    color: var(--text);
+    background: #fff;
+    transition: border-color 0.15s;
+}
+
+.form-group input[type="text"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26,74,122,0.12);
+}
+
+.hint {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+.inline-error {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--error);
+    margin-top: 10px;
+}
+
+.body-text {
+    font-size: 17px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    color: var(--text);
+}
+
+.body-text.muted {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.warning-text {
+    color: var(--warning);
+    font-weight: 500;
+}
+
+/* ── Progress ──────────────────────────────────────────────── */
+
+.progress-wrap {
+    background: #e4e7ed;
+    border-radius: 100px;
+    height: 22px;
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+.progress-bar {
+    background: var(--primary);
+    height: 100%;
+    border-radius: 100px;
+    transition: width 0.4s ease;
+    min-width: 6px;
+}
+
+.track-status {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+
+.progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.progress-row .progress-wrap {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.progress-pct-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 42px;
+    text-align: right;
+}
+
+.disc-status {
+    margin-top: 16px;
+}
+
+/* ── Alerts ────────────────────────────────────────────────── */
+
+.alert {
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.alert-warning {
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    color: var(--warning);
+}
+
+/* ── Log panel ─────────────────────────────────────────────── */
+
+.log-panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.log-panel summary {
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-muted);
+    background: #f8f9fb;
+    user-select: none;
+    list-style: none;
+}
+
+.log-panel summary::-webkit-details-marker { display: none; }
+
+.log-panel summary::before {
+    content: '▶ ';
+    font-size: 11px;
+}
+
+details[open].log-panel > summary::before {
+    content: '▼ ';
+}
+
+.log-panel pre {
+    padding: 16px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    margin: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.actions-foot {
+    margin-top: 36px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.btn {
+    display: block;
+    width: 100%;
+    padding: 17px 24px;
+    font-size: 18px;
+    font-weight: 600;
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.15s, opacity 0.15s, transform 0.08s;
+    line-height: 1.2;
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.btn:not(:disabled):active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--primary-text);
+    border-color: var(--primary);
+}
+.btn-primary:not(:disabled):hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: var(--secondary-text);
+    border-color: var(--secondary);
+}
+.btn-secondary:not(:disabled):hover {
+    background: var(--secondary-hover);
+    border-color: var(--secondary-hover);
+}
+
+.btn-warning {
+    background: var(--warning);
+    color: #fff;
+    border-color: var(--warning);
+}
+.btn-warning:not(:disabled):hover {
+    background: #8f4600;
+    border-color: #8f4600;
+}
+
+.btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border-color: var(--danger);
+}
+.btn-danger:not(:disabled):hover {
+    background: var(--error-bg);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border);
+    font-size: 15px;
+    padding: 10px 20px;
+    width: auto;
+}
+.btn-ghost:not(:disabled):hover {
+    background: #f0f2f5;
+    color: var(--text);
+}
+
+/* ── Config error fallback ─────────────────────────────────── */
+
+.config-error {
+    max-width: 600px;
+    margin: 80px auto;
+    padding: 40px;
+    background: var(--error-bg);
+    border: 2px solid var(--error-border);
+    border-radius: var(--radius);
+    font-family: sans-serif;
+}
+.config-error h1 {
+    color: var(--error);
+    margin-bottom: 16px;
+}
+.config-error code {
+    background: #fee;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 15px;
+}
+
+/* ── Debug panel ───────────────────────────────────────────── */
+
+.debug-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #0d0d1a;
+    color: #a0a8c0;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 6px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 20px;
+    align-items: center;
+    border-top: 1px solid #2a2a4a;
+    z-index: 9999;
+}
+
+.debug-badge {
+    background: #b91c1c;
+    color: #fff;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.debug-warn {
+    color: #f59e0b;
+}
+
+.debug-msg {
+    color: #6b7280;
+    font-style: italic;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
