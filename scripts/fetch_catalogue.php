@@ -14,7 +14,7 @@ if (!file_exists($configFile)) {
     exit(1);
 }
 
-$ini     = parse_ini_file($configFile, true);
+$ini     = parse_ini_file($configFile, true, INI_SCANNER_RAW);
 $baseDir = rtrim($ini['general']['base_dir'] ?? dirname($configFile), '/');
 $resolve = static fn($p) => ($p[0] === '/') ? $p : $baseDir . '/' . $p;
 
