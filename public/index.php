@@ -211,7 +211,7 @@ try {
 
                 <div class="actions-foot">
                     <button class="btn btn-danger" @click="cancelRip()" :disabled="_busy">Cancel</button>
-                    <button class="btn btn-ghost" @click="forceReset()" :disabled="_busy">Force reset</button>
+                    <button class="btn btn-ghost" @click="forceReset()" :disabled="_busy" x-show="cfg.debug">Force reset</button>
                 </div>
             </div>
 
@@ -219,7 +219,7 @@ try {
             <div x-show="state === 'CANCELLING'" class="screen">
                 <p class="status-message">Cancelling — please wait…</p>
                 <div class="actions-foot">
-                    <button class="btn btn-ghost" @click="forceReset()">Force reset</button>
+                    <button class="btn btn-ghost" @click="forceReset()" x-show="cfg.debug">Force reset</button>
                 </div>
             </div>
 
