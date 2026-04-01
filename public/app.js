@@ -63,6 +63,11 @@ function appData() {
         // ── Guard against double-firing transitions ───────────
         _busy: false,
 
+        // ── Set true once drive reports no-disc after COMPLETE ─
+        // Prevents the just-ripped disc (still spinning down / slow
+        // eject) from being treated as a new disc insertion.
+        _discClearedAfterComplete: false,
+
         // ── Debug ─────────────────────────────────────────────
         _lastDebugMsg: '',
 
@@ -170,13 +175,13 @@ function appData() {
                         break;
 
                     case 'COMPLETE':
-                        // Delay drive poll start — the worker ejects the disc
-                        // after setting state to 'complete', so an immediate poll
-                        // can see disc_ok and bounce straight to WAITING_FOR_ID
-                        // before the operator sees the COMPLETE screen.
+                        this._discClearedAfterComplete = false;
+                        // Short delay before polling starts so the eject has
+                        // time to begin; the _discClearedAfterComplete flag then
+                        // ensures we don't treat the departing disc as a new one.
                         setTimeout(() => {
                             if (this.state === 'COMPLETE') this._startDrivePoll();
-                        }, 5000);
+                        }, 2000);
                         break;
                 }
             } catch (err) {
@@ -210,8 +215,13 @@ function appData() {
                 this._enterState('WAITING_FOR_ID');
             } else if (this.state === 'WAITING_FOR_ID' && this.driveStatus !== 'disc_ok') {
                 this._enterState('WAITING_FOR_DISC');
-            } else if (this.state === 'COMPLETE' && this.driveStatus === 'disc_ok') {
-                this._enterState('WAITING_FOR_ID');
+            } else if (this.state === 'COMPLETE') {
+                if (this.driveStatus !== 'disc_ok') {
+                    // Disc has left — safe to treat the next disc_ok as a new insertion
+                    this._discClearedAfterComplete = true;
+                } else if (this._discClearedAfterComplete) {
+                    this._enterState('WAITING_FOR_ID');
+                }
             }
         },
 
