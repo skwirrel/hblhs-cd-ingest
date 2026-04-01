@@ -276,15 +276,11 @@ function runWithCancelCheck(
             }
         }
 
-        // Update encode progress by parsing LAME's "Frame# NNN/ TOTAL" output
-        if ($parseLameProgress && preg_match_all('/Frame#\s+(\d+)\/\s*(\d+)/', $output, $fm)) {
-            $last    = count($fm[1]) - 1;
-            $current = (int) $fm[1][$last];
-            $total   = (int) $fm[2][$last];
-            if ($total > 0) {
-                $state['track_progress_pct'] = min(99, (int) round($current / $total * 100));
-                writeState($stateFile, $state);
-            }
+        // Update encode progress by parsing LAME's "NNN/TOTAL ( PCT%)|" output
+        if ($parseLameProgress && preg_match_all('/\d+\/\d+\s+\(\s*(\d+)%\)/', $output, $pm)) {
+            $pct = min(99, (int) $pm[1][count($pm[1]) - 1]);
+            $state['track_progress_pct'] = $pct;
+            writeState($stateFile, $state);
         }
 
         usleep(200000); // 200 ms
