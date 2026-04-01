@@ -234,6 +234,7 @@ function runWithCancelCheck(
             } else {
                 proc_terminate($proc, SIGKILL);
             }
+            exec('killall -9 cdparanoia 2>/dev/null');
             // Drain remaining output briefly
             usleep(300000);
             $output .= stream_get_contents($pipes[1]);
@@ -255,6 +256,7 @@ function runWithCancelCheck(
                 } else {
                     proc_terminate($proc, SIGKILL);
                 }
+                exec('killall -9 cdparanoia 2>/dev/null');
                 usleep(300000);
                 $output .= stream_get_contents($pipes[1]);
                 $output .= stream_get_contents($pipes[2]);
