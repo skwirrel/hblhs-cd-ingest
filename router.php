@@ -41,6 +41,12 @@ if (strpos($uri, '/api/') === 0) {
     return true;
 }
 
+// Help page
+if ($uri === '/help') {
+    require __DIR__ . '/public/help.php';
+    return true;
+}
+
 // Static files under public/ — let PHP serve them directly
 $filePath = __DIR__ . '/public' . $uri;
 if ($uri !== '/' && file_exists($filePath) && is_file($filePath)) {

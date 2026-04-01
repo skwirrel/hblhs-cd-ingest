@@ -40,6 +40,7 @@ try {
                 <div class="header-actions">
                     <button class="header-btn" @click="downloadCsv('all')">Download all</button>
                     <button class="header-btn" @click="downloadCsv('new')">Download new</button>
+                    <a href="/help" class="header-btn">Help</a>
                 </div>
                 <div class="session-counter" aria-live="off">
                     <span x-text="sessionProcessed"></span> processed<span
@@ -99,7 +100,8 @@ try {
             </div>
 
             <!-- CONFIRM_KNOWN_ID -->
-            <div x-show="state === 'CONFIRM_KNOWN_ID'" class="screen">
+            <div x-show="state === 'CONFIRM_KNOWN_ID'" class="screen"
+                 @keydown.window.enter="state === 'CONFIRM_KNOWN_ID' && !_busy && confirmAndRip()">
                 <h2>Please confirm this is the correct disc</h2>
                 <div class="catalogue-card" x-show="catalogueEntry">
                     <dl>

@@ -99,6 +99,7 @@ body {
     cursor: pointer;
     transition: color 0.15s, border-color 0.15s, background-color 0.15s;
     white-space: nowrap;
+    text-decoration: none;
 }
 
 .header-btn:hover {
@@ -581,6 +582,66 @@ details[open].log-panel > summary::before {
     border-radius: 4px;
     font-size: 15px;
 }
+
+/* ── Help page ─────────────────────────────────────────────── */
+
+.help-content {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+}
+
+.help-intro {
+    font-size: 18px;
+    color: var(--text-muted);
+    line-height: 1.65;
+    margin-bottom: 36px;
+}
+
+.help-section {
+    margin-bottom: 40px;
+}
+
+.help-section h2 {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--primary);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+
+.help-section h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 18px 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.help-section p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+
+.help-section ul,
+.help-section ol {
+    padding-left: 24px;
+    margin-bottom: 12px;
+}
+
+.help-section li {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text);
+    margin-bottom: 6px;
+}
+
+.help-warn { color: var(--warning); }
+.help-crit { color: var(--danger); }
 
 /* ── Debug panel ───────────────────────────────────────────── */
 

@@ -155,9 +155,6 @@ function appData() {
                     case 'CONFIRM_KNOWN_ID':
                         this.ripStartError = '';
                         this._busy         = false;
-                        this.$nextTick(() => {
-                            document.getElementById('confirm-rip-btn')?.focus();
-                        });
                         break;
 
                     case 'ACQUIRE_CD':
