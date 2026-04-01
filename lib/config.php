@@ -15,7 +15,7 @@ function loadConfig(): array
         throw new RuntimeException('config.ini not found at ' . realpath(__DIR__ . '/..'));
     }
 
-    $ini = parse_ini_file($configFile, true);
+    $ini = parse_ini_file($configFile, true, INI_SCANNER_RAW);
     if ($ini === false) {
         throw new RuntimeException('Failed to parse config.ini — check syntax.');
     }
