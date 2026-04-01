@@ -43,7 +43,7 @@ try {
                 </div>
                 <div class="session-counter" aria-live="off">
                     <span x-text="sessionProcessed"></span> processed<span
-                        x-show="sessionDamaged > 0">, <span x-text="sessionDamaged"></span> with errors</span>
+                        x-show="sessionFailed > 0">, <span x-text="sessionFailed"></span> with errors</span>
                 </div>
                 <div class="disk-usage" x-show="diskUsedPct !== null"
                     :class="{ 'disk-usage-warn': diskUsedPct >= 80, 'disk-usage-crit': diskUsedPct >= 90 }"
@@ -110,7 +110,7 @@ try {
                 </div>
                 <p class="inline-error" x-show="ripStartError" x-text="ripStartError" aria-live="polite"></p>
                 <div class="actions">
-                    <button class="btn btn-primary" @click="confirmAndRip()" :disabled="_busy">Yes — start ripping</button>
+                    <button id="confirm-rip-btn" class="btn btn-primary" @click="confirmAndRip()" :disabled="_busy">Yes — start ripping</button>
                     <button class="btn btn-secondary" @click="wrongDisc()">Wrong disc — go back</button>
                 </div>
             </div>
@@ -244,17 +244,21 @@ try {
                 </div>
             </div>
 
-            <!-- DAMAGED -->
-            <div x-show="state === 'DAMAGED'" class="screen">
+            <!-- FAILED -->
+            <div x-show="state === 'FAILED'" class="screen">
                 <div class="banner banner-error">
                     <span class="banner-icon">✕</span>
-                    <h2>DISC COULD NOT BE FULLY READ</h2>
+                    <h2>PROCESSING FAILED</h2>
                 </div>
                 <dl class="summary-list">
                     <dt>Location</dt><dd x-text="ripLocationId"></dd>
-                    <dt>Bad sectors</dt><dd x-text="badSectors"></dd>
+                    <template x-if="badSectors > 0">
+                        <div class="summary-row-warning">
+                            <dt>Bad sectors</dt><dd x-text="badSectors"></dd>
+                        </div>
+                    </template>
                 </dl>
-                <p class="body-text">A partial recording has been saved and marked for inspection.</p>
+                <p class="inline-error" x-show="failureMessage" x-text="failureMessage" aria-live="polite"></p>
 
                 <details class="log-panel" open>
                     <summary>Show detail</summary>
@@ -284,14 +288,14 @@ try {
                 <h2>Session complete</h2>
                 <dl class="summary-list">
                     <dt>Discs processed</dt><dd x-text="sessionProcessed"></dd>
-                    <template x-if="sessionDamaged > 0">
+                    <template x-if="sessionFailed > 0">
                         <div class="summary-row-warning">
                             <dt>Discs with errors</dt>
-                            <dd x-text="sessionDamaged"></dd>
+                            <dd x-text="sessionFailed"></dd>
                         </div>
                     </template>
                 </dl>
-                <p class="body-text warning-text" x-show="sessionDamaged > 0">
+                <p class="body-text warning-text" x-show="sessionFailed > 0">
                     Discs with errors have been saved to the output folder for inspection.
                 </p>
                 <div class="actions">

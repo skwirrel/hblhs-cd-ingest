@@ -19,4 +19,5 @@ jsonOk([
     'current_track_phase' => (string) $state['current_track_phase'],
     'bad_sectors'         => (int) $state['bad_sectors'],
     'log_tail'            => (string) $state['log_tail'],
+    'failure_message'     => (string) ($state['failure_message'] ?? ''),
 ]);

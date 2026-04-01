@@ -43,7 +43,10 @@ function appData() {
 
         // ── Session counters ──────────────────────────────────
         sessionProcessed: 0,
-        sessionDamaged:   0,
+        sessionFailed:    0,
+
+        // ── Failure message ───────────────────────────────────
+        failureMessage: '',
 
         // ── Disk space ────────────────────────────────────────
         diskUsedPct: null,
@@ -152,6 +155,9 @@ function appData() {
                     case 'CONFIRM_KNOWN_ID':
                         this.ripStartError = '';
                         this._busy         = false;
+                        this.$nextTick(() => {
+                            document.getElementById('confirm-rip-btn')?.focus();
+                        });
                         break;
 
                     case 'ACQUIRE_CD':
@@ -254,6 +260,7 @@ function appData() {
                 this.currentTrackPhase = data.current_track_phase;
                 this.badSectors        = data.bad_sectors;
                 this.logTail           = data.log_tail;
+                this.failureMessage    = data.failure_message || '';
 
                 this._handleRipStatusChange();
             }, 1000);
@@ -265,9 +272,9 @@ function appData() {
                 if (this.ripState === 'complete') {
                     this.sessionProcessed++;
                     this._enterState('COMPLETE');
-                } else if (this.ripState === 'damaged') {
-                    this.sessionDamaged++;
-                    this._enterState('DAMAGED');
+                } else if (this.ripState === 'failed') {
+                    this.sessionFailed++;
+                    this._enterState('FAILED');
                 } else if (this.ripState === 'idle') {
                     // Worker died and state was auto-reset by the status endpoint
                     this._debug('stale rip — auto-recovering');
@@ -280,9 +287,9 @@ function appData() {
                     // Cancel arrived after rip finished
                     this.sessionProcessed++;
                     this._enterState('COMPLETE');
-                } else if (this.ripState === 'damaged') {
-                    this.sessionDamaged++;
-                    this._enterState('DAMAGED');
+                } else if (this.ripState === 'failed') {
+                    this.sessionFailed++;
+                    this._enterState('FAILED');
                 } else if (this.ripState === 'idle') {
                     this._debug('stale cancelling — auto-recovering');
                     this._enterState('WAITING_FOR_DISC');
@@ -557,7 +564,7 @@ function appData() {
             this._enterState('WAITING_FOR_DISC');
         },
 
-        // ── DAMAGED / CANCELLED ───────────────────────────────────
+        // ── FAILED / CANCELLED ────────────────────────────────────
 
         tryAgain() {
             // Pre-fill ID; keep catalogueEntry from the rip that failed
@@ -595,7 +602,7 @@ function appData() {
 
         startNewSession() {
             this.sessionProcessed = 0;
-            this.sessionDamaged   = 0;
+            this.sessionFailed    = 0;
             this._enterState('WAITING_FOR_DISC');
         },
 

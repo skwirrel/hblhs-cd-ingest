@@ -318,7 +318,8 @@ $badSectors   = 0;
 $logTail      = '';
 $fullLog      = '';
 $rippedTracks = 0;
-$outcome      = 'ok'; // ok | damaged | cancelled
+$outcome        = 'ok'; // ok | failed | cancelled
+$failureMessage = '';
 $totalSectors = (int) array_sum($trackSectors); // sum of all track sector counts
 $sectorsDone  = 0;                              // sectors fully ripped so far
 
@@ -397,26 +398,29 @@ for ($track = 1; $track <= $trackCount; $track++) {
     }
 
     if ($abortedOnErrors) {
-        $logTail = tailLines($logTail, "Track $track aborted — too many read errors\n");
-        $fullLog .= "ABORTED on track $track — exceeded max read errors\n";
-        $outcome  = 'damaged';
+        $logTail        = tailLines($logTail, "Track $track aborted — too many read errors\n");
+        $fullLog       .= "ABORTED on track $track — exceeded max read errors\n";
+        $outcome        = 'failed';
+        $failureMessage = "Track $track aborted — too many read errors";
         break;
     }
 
     // Hard failure: no WAV produced
     if (!file_exists($wavFile) || filesize($wavFile) === 0) {
-        $logTail = tailLines($logTail, "Track $track rip FAILED — no output file\n");
-        $fullLog .= "RIPPING FAILED on track $track — no output file\n";
-        $outcome  = 'damaged';
+        $logTail        = tailLines($logTail, "Track $track rip FAILED — no output file\n");
+        $fullLog       .= "RIPPING FAILED on track $track — no output file\n";
+        $outcome        = 'failed';
+        $failureMessage = "Track $track rip failed — no output file produced";
         break;
     }
 
     // Read errors — disc needs manual review even though the WAV exists.
     // Don't break: continue encoding remaining tracks so the reviewer has
-    // as much audio as possible in the damaged output directory.
+    // as much audio as possible in the failed output directory.
     if ($trackErrors > 0) {
-        $outcome = 'damaged';
-        wDebugLog("track $track: read errors — outcome set to damaged", [
+        $outcome        = 'failed';
+        $failureMessage = $failureMessage ?: 'Disc has read errors — audio may be imperfect';
+        wDebugLog("track $track: read errors — outcome set to failed", [
             'track_errors' => $trackErrors,
             'bad_sectors'  => $badSectors,
         ]);
@@ -472,9 +476,10 @@ for ($track = 1; $track <= $trackCount; $track++) {
     }
 
     if ($lameExit !== 0 || !file_exists($mp3File)) {
-        $logTail = tailLines($logTail, "Track $track encode FAILED\n");
-        $fullLog .= "ENCODE FAILED on track $track\n";
-        $outcome  = 'damaged';
+        $logTail        = tailLines($logTail, "Track $track encode FAILED\n");
+        $fullLog       .= "ENCODE FAILED on track $track\n";
+        $outcome        = 'failed';
+        $failureMessage = "Track $track encode failed";
         break;
     }
 
@@ -541,49 +546,78 @@ $meta = [
     'in_catalogue'     => $inCatalogue,
 ];
 
-if ($outcome === 'ok') {
-    // Write meta.json into temp dir, then move the whole dir to output
-    file_put_contents($tempDir . '/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
+try {
+    if ($outcome === 'ok') {
+        // Write meta.json into temp dir, then move the whole dir to output
+        file_put_contents($tempDir . '/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
 
-    $outputDir = $cfg['output_dir'] . '/' . $dirName;
-    // Remove any previous incomplete attempt at the same path
-    if (is_dir($outputDir)) {
-        foreach (glob($outputDir . '/*') ?: [] as $f) {
-            unlink($f);
+        $outputDir = $cfg['output_dir'] . '/' . $dirName;
+        // Remove any previous incomplete attempt at the same path
+        if (is_dir($outputDir)) {
+            foreach (glob($outputDir . '/*') ?: [] as $f) {
+                unlink($f);
+            }
+            rmdir($outputDir);
         }
-        rmdir($outputDir);
+        moveDir($tempDir, $outputDir);
+
+        // Update state
+        $state = readState($stateFile);
+        $state['state']               = 'complete';
+        $state['tracks_done']         = $trackCount;
+        $state['progress_pct']        = 100;
+        $state['current_track']       = 0;
+        $state['current_track_phase'] = '';
+        $state['log_tail']            = $logTail;
+        $state['bad_sectors']         = $badSectors;
+        writeState($stateFile, $state);
+
+        // Eject the disc
+        shell_exec('eject ' . escapeshellarg($device) . ' 2>/dev/null');
+        wDebugLog('worker finished: complete', ['output_dir' => $outputDir, 'bad_sectors' => $badSectors]);
+
+    } else {
+        // Failed — write meta.json and move to a dated failed directory
+        $meta['directory_name'] = $dirName . '_failed_' . gmdate('Ymd\THis');
+        $meta['failure_message'] = $failureMessage;
+        file_put_contents($tempDir . '/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
+
+        $failedDir = $cfg['output_dir'] . '/' . $meta['directory_name'];
+        moveDir($tempDir, $failedDir);
+
+        $state = readState($stateFile);
+        $state['state']               = 'failed';
+        $state['failure_message']     = $failureMessage;
+        $state['current_track']       = 0;
+        $state['current_track_phase'] = '';
+        $state['log_tail']            = $logTail;
+        $state['bad_sectors']         = $badSectors;
+        writeState($stateFile, $state);
+        // Copy the state snapshot into the failed directory for post-mortem diagnosis
+        @copy($stateFile, $failedDir . '/rip_state.json');
+        wDebugLog('worker finished: failed', ['failed_dir' => $failedDir, 'bad_sectors' => $badSectors, 'ripped_tracks' => $rippedTracks, 'failure_message' => $failureMessage]);
     }
-    moveDir($tempDir, $outputDir);
 
-    // Update state
+} catch (RuntimeException $e) {
+    // moveDir (or another file operation) failed — write a failed state so
+    // the UI shows the error screen rather than silently stalling in 'ripping'
+    // with a dead PID and eventually snapping back to WAITING_FOR_DISC.
+    // The ripped files remain in $tempDir so no audio data is lost.
+    $failureMessage = 'Output copy failed: ' . $e->getMessage()
+                    . ' (files preserved in ' . $tempDir . ')';
+    $logTail = tailLines($logTail, $failureMessage);
+
     $state = readState($stateFile);
-    $state['state']               = 'complete';
-    $state['tracks_done']         = $trackCount;
-    $state['progress_pct']        = 100;
+    $state['state']               = 'failed';
+    $state['failure_message']     = $failureMessage;
     $state['current_track']       = 0;
     $state['current_track_phase'] = '';
     $state['log_tail']            = $logTail;
     $state['bad_sectors']         = $badSectors;
     writeState($stateFile, $state);
+    // Copy state snapshot into the stranded temp directory for post-mortem diagnosis
+    @copy($stateFile, $tempDir . '/rip_state.json');
 
-    // Eject the disc
     shell_exec('eject ' . escapeshellarg($device) . ' 2>/dev/null');
-    wDebugLog('worker finished: complete', ['output_dir' => $outputDir, 'bad_sectors' => $badSectors]);
-
-} else {
-    // Damaged — write meta.json and move to a dated damaged directory
-    $meta['directory_name'] = $dirName . '_damaged_' . gmdate('Ymd\THis');
-    file_put_contents($tempDir . '/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
-
-    $damagedDir = $cfg['output_dir'] . '/' . $meta['directory_name'];
-    moveDir($tempDir, $damagedDir);
-
-    $state = readState($stateFile);
-    $state['state']               = 'damaged';
-    $state['current_track']       = 0;
-    $state['current_track_phase'] = '';
-    $state['log_tail']            = $logTail;
-    $state['bad_sectors']         = $badSectors;
-    writeState($stateFile, $state);
-    wDebugLog('worker finished: damaged', ['damaged_dir' => $damagedDir, 'bad_sectors' => $badSectors, 'ripped_tracks' => $rippedTracks]);
+    wDebugLog('worker error: output copy failed', ['error' => $e->getMessage(), 'temp_dir' => $tempDir]);
 }

@@ -135,6 +135,7 @@ function readStateFile(string $path): array
         'log_tail'            => '',
         'pid'                 => null,
         'cancel_requested'    => false,
+        'failure_message'     => '',
     ];
 
     if (!file_exists($path)) {
