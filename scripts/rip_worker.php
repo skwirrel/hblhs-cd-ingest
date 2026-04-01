@@ -461,6 +461,9 @@ for ($track = 1; $track <= $trackCount; $track++) {
     $fullLog .= "=== Track $track — encode ===\n" . $lameOutput . "\n";
     $logTail  = tailLines($logTail, "Track $track encode: exit=$lameExit");
 
+    // Capture WAV size before deleting — used in per-track metadata
+    $wavSize = file_exists($wavFile) ? (int) filesize($wavFile) : 0;
+
     // Delete WAV immediately — never hold more than one at a time
     if (file_exists($wavFile)) {
         unlink($wavFile);
@@ -484,6 +487,27 @@ for ($track = 1; $track <= $trackCount; $track++) {
         $failureMessage = "Track $track encode failed";
         break;
     }
+
+    // ─ Write per-track metadata ───────────────────────────────
+    $mp3Size     = file_exists($mp3File) ? (int) filesize($mp3File) : 0;
+    $durationSec = $currentTrackSectors > 0 ? round($currentTrackSectors / 75.0, 2) : 0.0;
+    $durMins     = (int) ($durationSec / 60);
+    $durSecs     = (int) round($durationSec - $durMins * 60);
+    file_put_contents(
+        $tempDir . '/track' . $pad . '.meta.json',
+        json_encode([
+            'track'              => $track,
+            'duration_seconds'   => $durationSec,
+            'duration_formatted' => $durMins . ':' . str_pad((string) $durSecs, 2, '0', STR_PAD_LEFT),
+            'encoded_at'         => gmdate('c'),
+            'wav_size_bytes'     => $wavSize,
+            'mp3_size_bytes'     => $mp3Size,
+            'rip_exit_code'      => $ripExit,
+            'encode_exit_code'   => $lameExit,
+            'read_errors'        => $trackErrors,
+            'sector_count'       => $currentTrackSectors,
+        ], JSON_PRETTY_PRINT)
+    );
 
     // ─ Track complete ─────────────────────────────────────────
     $rippedTracks++;
