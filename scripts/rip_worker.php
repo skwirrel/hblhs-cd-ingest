@@ -31,6 +31,7 @@ $cfg = [
     'state_file'          => $resolve($ini['paths']['state_file']   ?? 'data/rip_state.json'),
     'lame_options'        => $ini['encoding']['lame_options']                      ?? '--preset voice',
     'cdparanoia_options'  => $ini['ripping']['cdparanoia_options']                 ?? '-z 3',
+    'max_read_errors'     => (int) ($ini['ripping']['max_read_errors']              ?? 0),
     'debug'               => filter_var($ini['general']['debug'] ?? 'false', FILTER_VALIDATE_BOOLEAN),
 ];
 
@@ -130,7 +131,8 @@ function runWithCancelCheck(
     int    $expectedBytes      = 0,
     int    $sectorsDone        = 0,
     int    $currentTrackSectors = 0,
-    int    $totalSectors       = 0
+    int    $totalSectors       = 0,
+    int    $maxReadErrors      = 0
 ): array
 {
     $descriptors = [
@@ -150,6 +152,7 @@ function runWithCancelCheck(
 
     $output          = '';
     $cancelRequested = false;
+    $abortedOnErrors = false;
     $exitCode        = -1;
 
     while (true) {
@@ -176,12 +179,45 @@ function runWithCancelCheck(
         $state = readState($stateFile);
         if (!empty($state['cancel_requested'])) {
             $cancelRequested = true;
-            proc_terminate($proc, SIGTERM);
+            // Kill the child process tree: the proc_open PID is `sh -c ...`,
+            // and its child (cdparanoia/lame) won't die from proc_terminate alone.
+            $shPid = proc_get_status($proc)['pid'];
+            if ($shPid > 0) {
+                // cdparanoia often enters D state (uninterruptible sleep) waiting
+                // on CD I/O, so SIGTERM has no effect. Use SIGKILL for children,
+                // then kill the shell wrapper.
+                exec('pkill -KILL -P ' . (int)$shPid);
+                usleep(50000);
+                proc_terminate($proc, SIGKILL);
+            } else {
+                proc_terminate($proc, SIGKILL);
+            }
             // Drain remaining output briefly
             usleep(300000);
             $output .= stream_get_contents($pipes[1]);
             $output .= stream_get_contents($pipes[2]);
             break;
+        }
+
+        // Abort if too many SCSI read errors (cdparanoia retries forever on
+        // badly damaged sectors). Count errors seen so far in collected output.
+        if ($maxReadErrors > 0) {
+            $errorCount = preg_match_all('/scsi_read error/', $output);
+            if ($errorCount >= $maxReadErrors) {
+                $abortedOnErrors = true;
+                $shPid = proc_get_status($proc)['pid'];
+                if ($shPid > 0) {
+                    exec('pkill -KILL -P ' . (int)$shPid);
+                    usleep(50000);
+                    proc_terminate($proc, SIGKILL);
+                } else {
+                    proc_terminate($proc, SIGKILL);
+                }
+                usleep(300000);
+                $output .= stream_get_contents($pipes[1]);
+                $output .= stream_get_contents($pipes[2]);
+                break;
+            }
         }
 
         // Update progress from growing WAV file size if params were supplied
@@ -209,7 +245,7 @@ function runWithCancelCheck(
 
     proc_close($proc); // resource cleanup only — exit code already captured above
 
-    return [$exitCode, $output, $cancelRequested];
+    return [$exitCode, $output, $cancelRequested, $abortedOnErrors];
 }
 
 // ── Update state with our PID ─────────────────────────────────
@@ -284,9 +320,10 @@ for ($track = 1; $track <= $trackCount; $track++) {
         'total_sectors'      => $totalSectors,
     ]);
 
-    [$ripExit, $ripOutput, $cancelled] = runWithCancelCheck(
+    [$ripExit, $ripOutput, $cancelled, $abortedOnErrors] = runWithCancelCheck(
         $ripCmd, $stateFile, $wavFile, $expectedWavBytes,
-        $sectorsDone, $currentTrackSectors, $totalSectors
+        $sectorsDone, $currentTrackSectors, $totalSectors,
+        $cfg['max_read_errors']
     );
 
     $fullLog .= "=== Track $track — rip ===\n" . $ripOutput . "\n";
@@ -307,6 +344,13 @@ for ($track = 1; $track <= $trackCount; $track++) {
 
     if ($cancelled) {
         $outcome = 'cancelled';
+        break;
+    }
+
+    if ($abortedOnErrors) {
+        $logTail = tailLines($logTail, "Track $track aborted — too many read errors\n");
+        $fullLog .= "ABORTED on track $track — exceeded max read errors\n";
+        $outcome  = 'damaged';
         break;
     }
 
@@ -355,7 +399,7 @@ for ($track = 1; $track <= $trackCount; $track++) {
 
     wDebugLog("track $track: encoding", ['cmd' => $lameCmd]);
 
-    [$lameExit, $lameOutput, $cancelled] = runWithCancelCheck($lameCmd, $stateFile);
+    [$lameExit, $lameOutput, $cancelled,] = runWithCancelCheck($lameCmd, $stateFile);
 
     $fullLog .= "=== Track $track — encode ===\n" . $lameOutput . "\n";
     $logTail  = tailLines($logTail, "Track $track encode: exit=$lameExit");

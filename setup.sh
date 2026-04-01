@@ -137,6 +137,8 @@ beep_frequency_hz = 880
 # Lower = faster failure on damaged discs; higher = more thorough recovery.
 # Default 3 is a reasonable balance for archival kiosk use.
 cdparanoia_options = "--never-skip=3"
+# Abort ripping a track after this many SCSI read errors. 0 = no limit.
+max_read_errors = 3
 
 [encoding]
 format = mp3
