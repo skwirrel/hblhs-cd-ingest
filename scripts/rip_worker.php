@@ -96,6 +96,47 @@ function writeState(string $path, array $state): void
     rename($tmp, $path);
 }
 
+/**
+ * Move a directory to a destination, working across filesystems.
+ * Tries rename() first (atomic, same-fs only). Falls back to cp -a
+ * with file-count validation, then removes the source on success.
+ * Returns true on success, throws RuntimeException on failure.
+ */
+function moveDir(string $src, string $dest): bool
+{
+    // Try atomic rename first (works only on same filesystem)
+    if (@rename($src, $dest)) {
+        return true;
+    }
+
+    // Cross-filesystem: shell out to cp -a
+    $cmd = 'cp -a ' . escapeshellarg($src) . ' ' . escapeshellarg($dest) . ' 2>&1';
+    $cpOutput = '';
+    exec($cmd, $cpOutputLines, $cpExit);
+    $cpOutput = implode("\n", $cpOutputLines);
+
+    if ($cpExit !== 0) {
+        throw new RuntimeException("cp -a failed (exit $cpExit): $cpOutput");
+    }
+
+    // Validate: compare file counts
+    $srcCount  = count(glob($src . '/*') ?: []);
+    $destCount = count(glob($dest . '/*') ?: []);
+    if ($destCount < $srcCount) {
+        throw new RuntimeException(
+            "Copy validation failed: source has $srcCount files, destination has $destCount"
+        );
+    }
+
+    // Remove source
+    foreach (glob($src . '/*') ?: [] as $f) {
+        unlink($f);
+    }
+    rmdir($src);
+
+    return true;
+}
+
 function tailLines(string $existing, string $append, int $max = 25): string
 {
     $combined = rtrim($existing) . ($existing !== '' ? "\n" : '') . rtrim($append);
@@ -502,7 +543,7 @@ if ($outcome === 'ok') {
         }
         rmdir($outputDir);
     }
-    rename($tempDir, $outputDir);
+    moveDir($tempDir, $outputDir);
 
     // Update state
     $state = readState($stateFile);
@@ -525,7 +566,7 @@ if ($outcome === 'ok') {
     file_put_contents($tempDir . '/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
 
     $damagedDir = $cfg['output_dir'] . '/' . $meta['directory_name'];
-    rename($tempDir, $damagedDir);
+    moveDir($tempDir, $damagedDir);
 
     $state = readState($stateFile);
     $state['state']               = 'damaged';

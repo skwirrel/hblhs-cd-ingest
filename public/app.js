@@ -161,7 +161,13 @@ function appData() {
                         break;
 
                     case 'COMPLETE':
-                        this._startDrivePoll();
+                        // Delay drive poll start — the worker ejects the disc
+                        // after setting state to 'complete', so an immediate poll
+                        // can see disc_ok and bounce straight to WAITING_FOR_ID
+                        // before the operator sees the COMPLETE screen.
+                        setTimeout(() => {
+                            if (this.state === 'COMPLETE') this._startDrivePoll();
+                        }, 5000);
                         break;
                 }
             } catch (err) {

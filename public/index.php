@@ -154,19 +154,17 @@ try {
                     </div>
                     <span class="progress-pct-label" x-text="trackProgressPct + '%'"></span>
                 </div>
-                <template x-if="tracksTotal > 1">
-                    <div>
-                        <p class="track-status disc-status">
-                            Disc — <span x-text="tracksDone"></span> of <span x-text="tracksTotal"></span> tracks done
-                        </p>
-                        <div class="progress-row">
-                            <div class="progress-wrap">
-                                <div class="progress-bar" :style="'width:' + progressPct + '%'"></div>
-                            </div>
-                            <span class="progress-pct-label" x-text="progressPct + '%'"></span>
+                <div x-show="tracksTotal > 1">
+                    <p class="track-status disc-status">
+                        Disc — <span x-text="tracksDone"></span> of <span x-text="tracksTotal"></span> tracks done
+                    </p>
+                    <div class="progress-row">
+                        <div class="progress-wrap">
+                            <div class="progress-bar" :style="'width:' + progressPct + '%'"></div>
                         </div>
+                        <span class="progress-pct-label" x-text="progressPct + '%'"></span>
                     </div>
-                </template>
+                </div>
 
                 <div class="alert alert-warning" x-show="badSectors > 0" aria-live="polite">
                     ⚠ <span x-text="badSectors"></span> bad sector(s) detected
