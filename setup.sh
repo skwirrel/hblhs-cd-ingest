@@ -119,6 +119,7 @@ cdstat_script = scripts/cdstat.pl
 output_dir = data/output
 temp_dir = data/temp
 catalogue_csv = data/catalogue.csv
+local_catalogue_csv = data/local_catalogue.csv
 log_dir = data/logs
 state_file = data/rip_state.json
 

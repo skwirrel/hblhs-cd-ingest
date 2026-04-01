@@ -77,10 +77,57 @@ body {
     letter-spacing: 0.02em;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.header-btn {
+    background: transparent;
+    color: rgba(255,255,255,0.65);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 11px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+    white-space: nowrap;
+}
+
+.header-btn:hover {
+    color: #fff;
+    border-color: rgba(255,255,255,0.55);
+    background: rgba(255,255,255,0.08);
+}
+
 .session-counter {
     font-size: 14px;
     opacity: 0.8;
     white-space: nowrap;
+}
+
+.disk-usage {
+    font-size: 13px;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.disk-usage-warn {
+    opacity: 1;
+    color: #fbbf24;
+}
+
+.disk-usage-crit {
+    opacity: 1;
+    color: #f87171;
+    font-weight: 600;
 }
 
 /* ── Main layout ───────────────────────────────────────────── */

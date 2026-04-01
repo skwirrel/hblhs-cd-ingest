@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../lib/config.php';
 require_once __DIR__ . '/../../lib/response.php';
+require_once __DIR__ . '/../../lib/local_catalogue.php';
 
 requireMethod('GET');
 
@@ -62,4 +63,22 @@ while (($row = fgetcsv($fh)) !== false) {
 
 fclose($fh);
 
-jsonOk($result ?? ['found' => false]);
+if ($result !== null) {
+    jsonOk($result);
+    exit;
+}
+
+// Fall back to local acquisition catalogue
+$localEntry = localCatalogueFind($config['local_catalogue_csv'], $idNorm);
+if ($localEntry !== null) {
+    $desc = localCatalogueSynthDesc($localEntry);
+    jsonOk([
+        'found'       => true,
+        'location'    => $localEntry['id'],
+        'subject'     => $localEntry['title'],
+        'description' => $desc,
+    ]);
+    exit;
+}
+
+jsonOk(['found' => false]);

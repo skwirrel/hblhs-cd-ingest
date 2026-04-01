@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../lib/config.php';
 require_once __DIR__ . '/../../lib/response.php';
+require_once __DIR__ . '/../../lib/local_catalogue.php';
 
 requireMethod('POST');
 
@@ -8,10 +9,9 @@ $config = loadConfig();
 $body   = getJsonBody();
 
 // ── Input validation ──────────────────────────────────────────
-$locationId       = trim($body['location_id']       ?? '');
-$confirmedUnknown = (bool) ($body['confirmed_unknown'] ?? false);
+$locationId = trim($body['location_id'] ?? '');
 
-debugLog('rip start requested', ['location_id' => $locationId, 'confirmed_unknown' => $confirmedUnknown]);
+debugLog('rip start requested', ['location_id' => $locationId]);
 
 if ($locationId === '') {
     jsonError('MISSING_LOCATION_ID', 'No location_id provided in request body.', 400);
@@ -72,12 +72,28 @@ if (file_exists($csvFile)) {
     fclose($fh);
 }
 
+// ── Local catalogue fallback ──────────────────────────────────
+if (!$inCatalogue) {
+    $idNorm      = strtolower(str_replace(' ', '', $locationId));
+    $localEntry  = localCatalogueFind($config['local_catalogue_csv'], $idNorm);
+    if ($localEntry !== null) {
+        $inCatalogue    = true;
+        $locationId     = $localEntry['id'];
+        $desc           = localCatalogueSynthDesc($localEntry);
+        $catalogueEntry = [
+            'location'    => $locationId,
+            'subject'     => $localEntry['title'],
+            'description' => $desc,
+        ];
+    }
+}
+
 debugLog('catalogue lookup', ['in_catalogue' => $inCatalogue, 'entry' => $catalogueEntry]);
 
-if (!$inCatalogue && !$confirmedUnknown) {
+if (!$inCatalogue) {
     jsonError(
-        'UNKNOWN_LOCATION_UNCONFIRMED',
-        'Location ID not found in catalogue. Set confirmed_unknown to true to proceed.',
+        'UNKNOWN_LOCATION',
+        'Location ID not found in catalogue or local acquisition records.',
         400
     );
     exit;

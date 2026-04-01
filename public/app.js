@@ -18,10 +18,15 @@ function appData() {
         discDuration:   '',
 
         // ── ID entry ──────────────────────────────────────────
-        locationIdInput:  '',
-        locationIdConfirm: '',
-        catalogueEntry:   null,   // { location, subject, description }
-        idLookupError:    '',
+        locationIdInput: '',
+        catalogueEntry:  null,   // { location, subject, description }
+        idLookupError:   '',
+
+        // ── Acquisition form ──────────────────────────────────
+        acquireTitle:  '',
+        acquirePeople: '',
+        acquireDate:   '',
+        acquireError:  '',
 
         // ── Rip progress ──────────────────────────────────────
         ripState:          'idle',
@@ -39,6 +44,9 @@ function appData() {
         // ── Session counters ──────────────────────────────────
         sessionProcessed: 0,
         sessionDamaged:   0,
+
+        // ── Disk space ────────────────────────────────────────
+        diskUsedPct: null,
 
         // ── Inactivity beep internals ─────────────────────────
         _inactivityTimer: null,
@@ -91,6 +99,10 @@ function appData() {
             }
 
             this._enterState('WAITING_FOR_DISC');
+
+            // Disk space — fetch once immediately then every 60 s
+            this._fetchDiskSpace();
+            setInterval(() => this._fetchDiskSpace(), 60000);
         },
 
         // ===========================================================
@@ -112,18 +124,16 @@ function appData() {
                 switch (newState) {
 
                     case 'WAITING_FOR_DISC':
-                        this.locationIdInput   = '';
-                        this.locationIdConfirm = '';
-                        this.idLookupError     = '';
-                        this.ripStartError     = '';
-                        this._busy             = false;
+                        this.locationIdInput = '';
+                        this.idLookupError   = '';
+                        this.ripStartError   = '';
+                        this._busy           = false;
                         this._startDrivePoll();
                         break;
 
                     case 'WAITING_FOR_ID':
-                        this.locationIdInput   = '';
-                        this.locationIdConfirm = '';
-                        this.idLookupError     = '';
+                        this.locationIdInput = '';
+                        this.idLookupError   = '';
                         this.ripStartError     = '';
                         this._busy             = false;
                         this._startDrivePoll();
@@ -139,13 +149,12 @@ function appData() {
                         this._busy         = false;
                         break;
 
-                    case 'CONFIRM_UNKNOWN_ID':
-                        this.locationIdConfirm = '';
-                        this.ripStartError     = '';
-                        this._busy             = false;
+                    case 'ACQUIRE_CD':
+                        this.acquireTitle = this.acquirePeople = this.acquireDate = this.acquireError = '';
+                        this._busy = false;
+                        this._resetInactivityTimer();
                         this.$nextTick(() => {
-                            const el = document.getElementById('location-id-confirm');
-                            if (el) el.focus();
+                            document.getElementById('acquire-title')?.focus();
                         });
                         break;
 
@@ -419,7 +428,7 @@ function appData() {
                 this._enterState('CONFIRM_KNOWN_ID');
             } else {
                 this.catalogueEntry = null;
-                this._enterState('CONFIRM_UNKNOWN_ID');
+                this._enterState('ACQUIRE_CD');
             }
         },
 
@@ -436,8 +445,7 @@ function appData() {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({
-                        location_id:       this.locationIdInput.trim(),
-                        confirmed_unknown: false,
+                        location_id: this.locationIdInput.trim(),
                     }),
                 });
                 const json = await res.json();
@@ -467,43 +475,56 @@ function appData() {
             this._enterState('WAITING_FOR_DISC');
         },
 
-        // ── CONFIRM_UNKNOWN_ID ────────────────────────────────────
+        // ── ACQUIRE_CD ────────────────────────────────────────────
 
-        async confirmUnknownAndRip() {
+        async submitAcquisition() {
             if (this._busy) return;
-            if (this.locationIdInput !== this.locationIdConfirm) return;
-
+            const title = this.acquireTitle.trim();
+            if (!title) {
+                this.acquireError = 'Title is required.';
+                return;
+            }
             this._busy = true;
-            this.ripStartError = '';
+            this.acquireError = '';
 
             try {
-                const res  = await fetch('/api/rip/start', {
+                const res  = await fetch('/api/catalogue/local_add', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({
-                        location_id:       this.locationIdInput.trim(),
-                        confirmed_unknown: true,
+                        id:     this.locationIdInput.trim(),
+                        title:  title,
+                        people: this.acquirePeople.trim(),
+                        date:   this.acquireDate.trim(),
                     }),
                 });
                 const json = await res.json();
 
                 if (json.ok) {
-                    this.ripLocationId = json.data.location_id;
-                    this.tracksTotal   = json.data.track_count;
-                    this._enterState('RIPPING');
+                    this.locationIdInput = json.data.id;
+                    this.catalogueEntry = {
+                        location:    json.data.id,
+                        subject:     json.data.title,
+                        description: json.data.description,
+                    };
+                    this._enterState('CONFIRM_KNOWN_ID');
                 } else {
-                    this.ripStartError = json.error.message;
+                    this.acquireError = json.error.message;
                     this._busy = false;
                 }
             } catch (err) {
-                this.ripStartError = 'Could not reach the server. Please try again.';
+                this.acquireError = 'Could not reach the server. Please try again.';
                 this._busy = false;
             }
         },
 
-        async cancelUnknown() {
+        async cancelAcquisition() {
             await this._apiEjectWithFallback();
             this._enterState('WAITING_FOR_DISC');
+        },
+
+        downloadCsv(mode) {
+            window.location.href = '/api/catalogue/download?mode=' + mode;
         },
 
         // ── RIPPING ───────────────────────────────────────────────
@@ -582,6 +603,13 @@ function appData() {
             const ctx = context ? ' ' + JSON.stringify(context) : '';
             console.debug('[CD:' + ts + '] ' + message + ctx);
             this._lastDebugMsg = message + (context ? ' ' + JSON.stringify(context) : '');
+        },
+
+        async _fetchDiskSpace() {
+            const data = await this._api('/api/diskspace');
+            if (data !== null) {
+                this.diskUsedPct = data.used_pct;
+            }
         },
 
         /**

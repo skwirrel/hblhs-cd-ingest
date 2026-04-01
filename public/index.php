@@ -36,9 +36,20 @@ try {
         <!-- ── Header ─────────────────────────────────────────────── -->
         <header class="app-header">
             <h1>HBLHS CD Archive Ingest</h1>
-            <div class="session-counter" aria-live="off">
-                <span x-text="sessionProcessed"></span> processed<span
-                    x-show="sessionDamaged > 0">, <span x-text="sessionDamaged"></span> with errors</span>
+            <div class="header-right">
+                <div class="header-actions">
+                    <button class="header-btn" @click="downloadCsv('all')">Download all</button>
+                    <button class="header-btn" @click="downloadCsv('new')">Download new</button>
+                </div>
+                <div class="session-counter" aria-live="off">
+                    <span x-text="sessionProcessed"></span> processed<span
+                        x-show="sessionDamaged > 0">, <span x-text="sessionDamaged"></span> with errors</span>
+                </div>
+                <div class="disk-usage" x-show="diskUsedPct !== null"
+                    :class="{ 'disk-usage-warn': diskUsedPct >= 80, 'disk-usage-crit': diskUsedPct >= 90 }"
+                    aria-live="off">
+                    <span x-text="diskUsedPct + '%'"></span> full
+                </div>
             </div>
         </header>
 
@@ -104,38 +115,59 @@ try {
                 </div>
             </div>
 
-            <!-- CONFIRM_UNKNOWN_ID -->
-            <div x-show="state === 'CONFIRM_UNKNOWN_ID'" class="screen">
-                <div class="banner banner-warning">
-                    <span class="banner-icon">⚠</span>
-                    <h2>Warning — Location ID not found</h2>
-                </div>
-                <p class="body-text">
-                    The ID '<strong x-text="locationIdInput"></strong>' was not found in the catalogue.
-                    If you are sure this is correct, please type the ID again below to confirm.
-                </p>
+            <!-- ACQUIRE_CD -->
+            <div x-show="state === 'ACQUIRE_CD'" class="screen">
+                <h2>New disc — please enter details</h2>
+                <p class="body-text muted">Location ID: <strong x-text="locationIdInput"></strong></p>
                 <div class="form-group">
-                    <label for="location-id-confirm">Re-enter Location ID to confirm</label>
+                    <label for="acquire-title">Title <span style="color:var(--error)">*</span></label>
                     <input
-                        id="location-id-confirm"
+                        id="acquire-title"
                         type="text"
-                        x-model="locationIdConfirm"
-                        @keydown.enter.prevent="confirmUnknownAndRip()"
-                        placeholder="Re-enter ID exactly"
+                        x-model="acquireTitle"
+                        @keydown="_resetInactivityTimer()"
+                        @keydown.enter.prevent="document.getElementById('acquire-people')?.focus()"
+                        @keydown.tab.prevent="document.getElementById('acquire-people')?.focus()"
+                        placeholder="e.g. Annual Concert"
                         autocomplete="off"
                         autocorrect="off"
-                        autocapitalize="characters"
                         spellcheck="false"
                     >
                 </div>
-                <p class="inline-error" x-show="ripStartError" x-text="ripStartError" aria-live="polite"></p>
+                <div class="form-group">
+                    <label for="acquire-people">People</label>
+                    <input
+                        id="acquire-people"
+                        type="text"
+                        x-model="acquirePeople"
+                        @keydown="_resetInactivityTimer()"
+                        @keydown.enter.prevent="document.getElementById('acquire-date')?.focus()"
+                        @keydown.tab.prevent="document.getElementById('acquire-date')?.focus()"
+                        placeholder="e.g. Senior Choir"
+                        autocomplete="off"
+                        autocorrect="off"
+                        spellcheck="false"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="acquire-date">Date of recording</label>
+                    <input
+                        id="acquire-date"
+                        type="text"
+                        x-model="acquireDate"
+                        @keydown="_resetInactivityTimer()"
+                        @keydown.enter.prevent="submitAcquisition()"
+                        @keydown.tab.prevent="submitAcquisition()"
+                        placeholder="e.g. circa 2002"
+                        autocomplete="off"
+                        autocorrect="off"
+                        spellcheck="false"
+                    >
+                </div>
+                <p class="inline-error" x-show="acquireError" x-text="acquireError" aria-live="polite"></p>
                 <div class="actions">
-                    <button
-                        class="btn btn-warning"
-                        @click="confirmUnknownAndRip()"
-                        :disabled="_busy || locationIdInput !== locationIdConfirm || !locationIdConfirm.trim()"
-                    >Confirm and start ripping</button>
-                    <button class="btn btn-secondary" @click="cancelUnknown()">Cancel — go back</button>
+                    <button class="btn btn-primary" @click="submitAcquisition()" :disabled="_busy || !acquireTitle.trim()">Continue</button>
+                    <button class="btn btn-ghost" @click="cancelAcquisition()">Cancel — eject disc</button>
                 </div>
             </div>
 

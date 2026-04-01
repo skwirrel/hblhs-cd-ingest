@@ -168,12 +168,13 @@ function discProgress(int $sectorsDone, float $currentFraction, int $currentTrac
 function runWithCancelCheck(
     string $cmd,
     string $stateFile,
-    string $watchFile          = '',
-    int    $expectedBytes      = 0,
-    int    $sectorsDone        = 0,
+    string $watchFile           = '',
+    int    $expectedBytes       = 0,
+    int    $sectorsDone         = 0,
     int    $currentTrackSectors = 0,
-    int    $totalSectors       = 0,
-    int    $maxReadErrors      = 0
+    int    $totalSectors        = 0,
+    int    $maxReadErrors       = 0,
+    bool   $parseLameProgress   = false
 ): array
 {
     $descriptors = [
@@ -271,6 +272,17 @@ function runWithCancelCheck(
                     $sectorsDone, $ripFraction, $currentTrackSectors, $totalSectors
                 );
                 $state['track_progress_pct']  = (int) round($ripFraction * 100);
+                writeState($stateFile, $state);
+            }
+        }
+
+        // Update encode progress by parsing LAME's "Frame# NNN/ TOTAL" output
+        if ($parseLameProgress && preg_match_all('/Frame#\s+(\d+)\/\s*(\d+)/', $output, $fm)) {
+            $last    = count($fm[1]) - 1;
+            $current = (int) $fm[1][$last];
+            $total   = (int) $fm[2][$last];
+            if ($total > 0) {
+                $state['track_progress_pct'] = min(99, (int) round($current / $total * 100));
                 writeState($stateFile, $state);
             }
         }
@@ -427,7 +439,7 @@ for ($track = 1; $track <= $trackCount; $track++) {
 
     $state['current_track_phase'] = 'encoding';
     $state['progress_pct']        = discProgress($sectorsDone, 1.0, $currentTrackSectors, $totalSectors);
-    $state['track_progress_pct']  = 100;
+    $state['track_progress_pct']  = 0;
     $state['bad_sectors']         = $badSectors;
     $state['log_tail']            = $logTail;
     writeState($stateFile, $state);
@@ -440,7 +452,9 @@ for ($track = 1; $track <= $trackCount; $track++) {
 
     wDebugLog("track $track: encoding", ['cmd' => $lameCmd]);
 
-    [$lameExit, $lameOutput, $cancelled,] = runWithCancelCheck($lameCmd, $stateFile);
+    [$lameExit, $lameOutput, $cancelled,] = runWithCancelCheck(
+        $lameCmd, $stateFile, '', 0, 0, 0, 0, 0, true
+    );
 
     $fullLog .= "=== Track $track — encode ===\n" . $lameOutput . "\n";
     $logTail  = tailLines($logTail, "Track $track encode: exit=$lameExit");
