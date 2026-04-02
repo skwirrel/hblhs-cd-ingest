@@ -96,16 +96,18 @@ cdIngester/
     ├── rip_state.json          ← shared state file between rip_worker.php and the status endpoint
     ├── output/                 ← completed rips (one subdirectory per disc)
     │   ├── arc_1_m_a3f4b2c1/              ← successful rip
-    │   │   ├── track01.mp3
-    │   │   ├── track01.meta.json          ← per-track: duration, file sizes, timestamps, errors
+    │   │   ├── track01.mp3                ← MP3 files at top level for easy browsing
     │   │   ├── track02.mp3
-    │   │   ├── track02.meta.json
-    │   │   └── meta.json                  ← disc-level: location ID, subject, rip log, etc.
+    │   │   └── _workings/                 ← metadata and logs kept out of the way
+    │   │       ├── meta.json              ← disc-level: location ID, subject, rip log, etc.
+    │   │       ├── track01.meta.json      ← per-track: duration, file sizes, timestamps, errors
+    │   │       └── track02.meta.json
     │   └── arc_1_m_a3f4b2c1_failed_20240115T143201/   ← failed rip
     │       ├── track01.mp3                ← partial — only tracks completed before failure
-    │       ├── track01.meta.json
-    │       ├── meta.json                  ← includes failure_message and status: "failed"
-    │       └── rip_state.json             ← state snapshot at failure for diagnosis
+    │       └── _workings/
+    │           ├── meta.json              ← includes failure_message and status: "failed"
+    │           ├── track01.meta.json
+    │           └── rip_state.json         ← state snapshot at failure for diagnosis
     ├── temp/               ← in-progress work directories (cleaned up after each rip)
     └── logs/
         └── debug.log       ← written when debug = true in config.ini

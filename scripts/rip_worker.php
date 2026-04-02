@@ -128,11 +128,8 @@ function moveDir(string $src, string $dest): bool
         );
     }
 
-    // Remove source
-    foreach (glob($src . '/*') ?: [] as $f) {
-        unlink($f);
-    }
-    rmdir($src);
+    // Remove source (rm -rf handles subdirectories cleanly)
+    shell_exec('rm -rf ' . escapeshellarg($src));
 
     return true;
 }
@@ -327,9 +324,8 @@ $sectorsDone  = 0;                              // sectors fully ripped so far
 
 $tempDir = $cfg['temp_dir'] . '/' . $dirName . '_work_' . getmypid();
 
-if (!is_dir($tempDir)) {
-    mkdir($tempDir, 0755, true);
-}
+// Create temp dir and _workings subdirectory for metadata/logs
+mkdir($tempDir . '/_workings', 0755, true);
 
 $ripCommand    = 'cdparanoia -d ' . $device;
 $encodeCommand = 'lame ' . $cfg['lame_options'];
@@ -494,7 +490,7 @@ for ($track = 1; $track <= $trackCount; $track++) {
     $durMins     = (int) ($durationSec / 60);
     $durSecs     = (int) round($durationSec - $durMins * 60);
     file_put_contents(
-        $tempDir . '/track' . $pad . '.meta.json',
+        $tempDir . '/_workings/track' . $pad . '.meta.json',
         json_encode([
             'track'              => $track,
             'duration_seconds'   => $durationSec,
@@ -574,16 +570,13 @@ $meta = [
 
 try {
     if ($outcome === 'ok') {
-        // Write meta.json into temp dir, then move the whole dir to output
-        file_put_contents($tempDir . '/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
+        // Write meta.json into _workings, then move the whole dir to output
+        file_put_contents($tempDir . '/_workings/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
 
         $outputDir = $cfg['output_dir'] . '/' . $dirName;
         // Remove any previous incomplete attempt at the same path
         if (is_dir($outputDir)) {
-            foreach (glob($outputDir . '/*') ?: [] as $f) {
-                unlink($f);
-            }
-            rmdir($outputDir);
+            shell_exec('rm -rf ' . escapeshellarg($outputDir));
         }
         moveDir($tempDir, $outputDir);
 
@@ -606,7 +599,7 @@ try {
         // Failed — write meta.json and move to a dated failed directory
         $meta['directory_name'] = $dirName . '_failed_' . gmdate('Ymd\THis');
         $meta['failure_message'] = $failureMessage;
-        file_put_contents($tempDir . '/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
+        file_put_contents($tempDir . '/_workings/meta.json', json_encode($meta, JSON_PRETTY_PRINT));
 
         $failedDir = $cfg['output_dir'] . '/' . $meta['directory_name'];
         moveDir($tempDir, $failedDir);
@@ -619,8 +612,8 @@ try {
         $state['log_tail']            = $logTail;
         $state['bad_sectors']         = $badSectors;
         writeState($stateFile, $state);
-        // Copy the state snapshot into the failed directory for post-mortem diagnosis
-        @copy($stateFile, $failedDir . '/rip_state.json');
+        // Copy the state snapshot into _workings for post-mortem diagnosis
+        @copy($stateFile, $failedDir . '/_workings/rip_state.json');
         wDebugLog('worker finished: failed', ['failed_dir' => $failedDir, 'bad_sectors' => $badSectors, 'ripped_tracks' => $rippedTracks, 'failure_message' => $failureMessage]);
     }
 
@@ -641,8 +634,8 @@ try {
     $state['log_tail']            = $logTail;
     $state['bad_sectors']         = $badSectors;
     writeState($stateFile, $state);
-    // Copy state snapshot into the stranded temp directory for post-mortem diagnosis
-    @copy($stateFile, $tempDir . '/rip_state.json');
+    // Copy state snapshot into _workings for post-mortem diagnosis
+    @copy($stateFile, $tempDir . '/_workings/rip_state.json');
 
     shell_exec('eject ' . escapeshellarg($device) . ' 2>/dev/null');
     wDebugLog('worker error: output copy failed', ['error' => $e->getMessage(), 'temp_dir' => $tempDir]);
