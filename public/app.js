@@ -23,8 +23,8 @@ function appData() {
         idLookupError:   '',
 
         // ── Acquisition form ──────────────────────────────────
+        acquireAuthor: '',
         acquireTitle:  '',
-        acquirePeople: '',
         acquireDate:   '',
         acquireError:  '',
 
@@ -158,11 +158,11 @@ function appData() {
                         break;
 
                     case 'ACQUIRE_CD':
-                        this.acquireTitle = this.acquirePeople = this.acquireDate = this.acquireError = '';
+                        this.acquireAuthor = this.acquireTitle = this.acquireDate = this.acquireError = '';
                         this._busy = false;
                         this._resetInactivityTimer();
                         this.$nextTick(() => {
-                            document.getElementById('acquire-title')?.focus();
+                            document.getElementById('acquire-author')?.focus();
                         });
                         break;
 
@@ -493,11 +493,6 @@ function appData() {
 
         async submitAcquisition() {
             if (this._busy) return;
-            const title = this.acquireTitle.trim();
-            if (!title) {
-                this.acquireError = 'Title is required.';
-                return;
-            }
             this._busy = true;
             this.acquireError = '';
 
@@ -507,8 +502,8 @@ function appData() {
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({
                         id:     this.locationIdInput.trim(),
-                        title:  title,
-                        people: this.acquirePeople.trim(),
+                        author: this.acquireAuthor.trim(),
+                        title:  this.acquireTitle.trim(),
                         date:   this.acquireDate.trim(),
                     }),
                 });

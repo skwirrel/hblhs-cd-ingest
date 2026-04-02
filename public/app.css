@@ -311,7 +311,8 @@ body {
     letter-spacing: 0.05em;
 }
 
-.form-group input[type="text"] {
+.form-group input[type="text"],
+.form-group textarea {
     width: 100%;
     padding: 14px 18px;
     font-size: 24px;
@@ -323,9 +324,17 @@ body {
     color: var(--text);
     background: #fff;
     transition: border-color 0.15s;
+    font-family: inherit;
+    box-sizing: border-box;
 }
 
-.form-group input[type="text"]:focus {
+.form-group textarea {
+    resize: vertical;
+    line-height: 1.4;
+}
+
+.form-group input[type="text"]:focus,
+.form-group textarea:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(26,74,122,0.12);
 }

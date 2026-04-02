@@ -48,19 +48,19 @@
 
             <h3>New disc (not yet in the catalogue)</h3>
             <p>If the Location ID is not found, you will be asked to enter
-            details for the disc before it can be ripped:</p>
+            details for the disc before it can be ripped. All fields are optional:</p>
             <ul>
-                <li><strong>Title</strong> (required) &mdash; a short description of the
+                <li><strong>Author / Artist</strong> &mdash; performer, conductor,
+                ensemble, or creator, e.g. <em>Senior Choir</em>.</li>
+                <li><strong>Title</strong> &mdash; a short description of the
                 recording, e.g. <em>Annual Concert 2003</em>.</li>
-                <li><strong>People</strong> (optional) &mdash; performers, conductor,
-                ensemble, etc.</li>
-                <li><strong>Date of recording</strong> (optional) &mdash; an approximate
-                date is fine, e.g. <em>circa 2002</em> or <em>Summer 1998</em>.</li>
+                <li><strong>Date of recording</strong> &mdash; an approximate date is
+                fine, e.g. <em>circa 2002</em> or <em>Summer 1998</em>.</li>
             </ul>
             <p>Press <strong>Tab</strong> or <strong>Enter</strong> to move between
-            fields. Once the title is filled in, click <strong>Continue</strong> to
-            proceed to confirmation. These details are saved to a local catalogue so
-            the disc will be recognised automatically next time.</p>
+            fields. Click <strong>Continue</strong> to proceed to confirmation.
+            These details are saved to a local catalogue so the disc will be
+            recognised automatically next time.</p>
         </div>
 
         <!-- ── Step 3 ───────────────────────────────────────────── -->

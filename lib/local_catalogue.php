@@ -3,19 +3,39 @@
  * Local acquisition catalogue helpers.
  *
  * The local catalogue CSV (data/local_catalogue.csv) has no header row.
- * Fields: ID, Title, People, Date, DownloadDate
+ * Columns: ID, Author, Title, Date, DownloadDate
  *
- * DownloadDate is always exactly 16 bytes in the stored file:
- *   - 16 spaces  => not yet downloaded
- *   - "dd/mm/yy HH:MM" (14 chars) + 2 spaces => downloaded at that time
- *
- * This fixed-width last field lets localCatalogueMarkDownloaded() use
- * fseek() to overwrite just that field without rewriting the whole file.
+ * DownloadDate is blank for undownloaded entries. localCatalogueMarkDownloaded()
+ * rewrites the file rather than using in-place seeks, which allows any field
+ * (notably Abstract) to contain embedded newlines in RFC 4180 quoted form.
  */
 
 /**
+ * Minimal CSV field quoting (RFC 4180).
+ * Quotes fields that contain commas, double-quotes, or newlines.
+ */
+function csvQuoteField(string $value): string
+{
+    if (strpos($value, ',')  !== false
+     || strpos($value, '"')  !== false
+     || strpos($value, "\n") !== false
+     || strpos($value, "\r") !== false) {
+        return '"' . str_replace('"', '""', $value) . '"';
+    }
+    return $value;
+}
+
+/**
+ * Format an array of fields as a single CSV line.
+ */
+function csvFormatRow(array $fields): string
+{
+    return implode(',', array_map('csvQuoteField', $fields)) . "\n";
+}
+
+/**
  * Scan the local catalogue for a matching (normalised) ID.
- * Returns [id, title, people, date] or null if not found.
+ * Returns associative array of fields or null if not found.
  */
 function localCatalogueFind(string $csvFile, string $idNorm): ?array
 {
@@ -30,16 +50,16 @@ function localCatalogueFind(string $csvFile, string $idNorm): ?array
 
     $result = null;
     while (($row = fgetcsv($fh)) !== false) {
-        if (count($row) < 4) {
+        if (count($row) < 2) {
             continue;
         }
         $rowNorm = strtolower(str_replace(' ', '', trim($row[0])));
         if ($rowNorm === $idNorm) {
             $result = [
                 'id'     => trim($row[0]),
-                'title'  => trim($row[1]),
-                'people' => trim($row[2]),
-                'date'   => trim($row[3]),
+                'author' => trim($row[1] ?? ''),
+                'title'  => trim($row[2] ?? ''),
+                'date'   => trim($row[3] ?? ''),
             ];
             break;
         }
@@ -52,23 +72,21 @@ function localCatalogueFind(string $csvFile, string $idNorm): ?array
 /**
  * Append a new entry to the local catalogue CSV with a blank download date.
  */
-function localCatalogueAppend(string $csvFile, string $id, string $title, string $people, string $date): void
-{
-    $fields = [
-        csvQuoteField($id),
-        csvQuoteField($title),
-        csvQuoteField($people),
-        csvQuoteField($date),
-        str_repeat(' ', 16),  // fixed-width DownloadDate placeholder
-    ];
-    $line = implode(',', $fields) . "\n";
-
+function localCatalogueAppend(
+    string $csvFile,
+    string $id,
+    string $author,
+    string $title,
+    string $date
+): void {
+    $line = csvFormatRow([$id, $author, $title, $date, '']);
     file_put_contents($csvFile, $line, FILE_APPEND | LOCK_EX);
 }
 
 /**
- * Seek-and-overwrite the DownloadDate field for the given IDs.
- * $dateStr must be exactly 14 chars (e.g. "01/04/26 14:30") — 2 trailing spaces are added.
+ * Mark the given IDs as downloaded by rewriting the catalogue file.
+ * Rewiring the whole file (rather than seeking in place) means multiline
+ * quoted fields in Abstract (and other columns) are fully supported.
  */
 function localCatalogueMarkDownloaded(string $csvFile, array $ids, string $dateStr): void
 {
@@ -76,41 +94,48 @@ function localCatalogueMarkDownloaded(string $csvFile, array $ids, string $dateS
         return;
     }
 
-    // Build a normalised set of IDs to mark
     $normSet = [];
     foreach ($ids as $id) {
         $normSet[strtolower(str_replace(' ', '', $id))] = true;
     }
 
-    // Pad/truncate dateStr to exactly 14 chars, then add 2 trailing spaces = 16 bytes
-    $dateStr = substr(str_pad($dateStr, 14), 0, 14);
-    $stamp   = $dateStr . '  '; // exactly 16 bytes
-
-    $fh = fopen($csvFile, 'r+');
+    // Read all rows
+    $fh = fopen($csvFile, 'r');
     if (!$fh) {
         return;
     }
-
-    $lineStartByte = 0;
-    while (($line = fgets($fh)) !== false) {
-        // Parse just the ID field (first CSV field) to check match
-        $row = str_getcsv($line);
-        if (!empty($row[0])) {
-            $rowNorm = strtolower(str_replace(' ', '', trim($row[0])));
-            if (isset($normSet[$rowNorm])) {
-                // Seek formula: $lineStartByte + strlen($line) - 17 (16 chars + \n)
-                $dateOffset = $lineStartByte + strlen($line) - 17;
-                if ($dateOffset >= 0) {
-                    fseek($fh, $dateOffset);
-                    fwrite($fh, $stamp);
-                    fseek($fh, $lineStartByte + strlen($line)); // restore position
-                }
-            }
-        }
-        $lineStartByte += strlen($line);
+    $rows = [];
+    while (($row = fgetcsv($fh)) !== false) {
+        $rows[] = $row;
     }
-
     fclose($fh);
+
+    // Stamp the DownloadDate (column 6) for matching rows
+    foreach ($rows as &$row) {
+        if (empty($row[0])) {
+            continue;
+        }
+        $rowNorm = strtolower(str_replace(' ', '', trim($row[0])));
+        if (isset($normSet[$rowNorm])) {
+            while (count($row) < 5) {
+                $row[] = '';
+            }
+            $row[4] = $dateStr;
+        }
+    }
+    unset($row);
+
+    // Atomically rewrite the file
+    $tmp = $csvFile . '.tmp';
+    $fh  = fopen($tmp, 'w');
+    if (!$fh) {
+        return;
+    }
+    foreach ($rows as $row) {
+        fwrite($fh, csvFormatRow($row));
+    }
+    fclose($fh);
+    rename($tmp, $csvFile);
 }
 
 /**
@@ -120,19 +145,8 @@ function localCatalogueSynthDesc(array $entry): string
 {
     $parts = array_filter([
         $entry['title']  ?? '',
-        $entry['people'] ?? '',
+        $entry['author'] ?? '',
         $entry['date']   ?? '',
     ], static fn($v) => $v !== '');
     return implode(' — ', $parts);
-}
-
-/**
- * Minimal CSV field quoting: quote if value contains comma or double-quote.
- */
-function csvQuoteField(string $value): string
-{
-    if (strpos($value, ',') !== false || strpos($value, '"') !== false) {
-        return '"' . str_replace('"', '""', $value) . '"';
-    }
-    return $value;
 }

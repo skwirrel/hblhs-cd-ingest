@@ -5,21 +5,16 @@ require_once __DIR__ . '/../../lib/local_catalogue.php';
 
 requireMethod('POST');
 
-$config  = loadConfig();
-$body    = getJsonBody();
+$config = loadConfig();
+$body   = getJsonBody();
 
 $id     = trim($body['id']     ?? '');
+$author = trim($body['author'] ?? '');
 $title  = trim($body['title']  ?? '');
-$people = trim($body['people'] ?? '');
 $date   = trim($body['date']   ?? '');
 
 if ($id === '') {
     jsonError('MISSING_PARAM', 'Field "id" is required.', 400);
-    exit;
-}
-
-if ($title === '') {
-    jsonError('MISSING_PARAM', 'Field "title" is required.', 400);
     exit;
 }
 
@@ -38,11 +33,11 @@ if ($existing !== null) {
     exit;
 }
 
-localCatalogueAppend($csvFile, $id, $title, $people, $date);
+localCatalogueAppend($csvFile, $id, $author, $title, $date);
 
 debugLog('local_add: appended', ['id' => $id, 'title' => $title]);
 
-$entry = ['id' => $id, 'title' => $title, 'people' => $people, 'date' => $date];
+$entry = compact('id', 'author', 'title', 'date');
 
 jsonOk([
     'id'          => $id,

@@ -37,7 +37,8 @@ try {
         <header class="app-header">
             <h1>HBLHS CD Archive Ingest</h1>
             <div class="header-right">
-                <div class="header-actions">
+                <div class="header-actions"
+                     x-show="state !== 'RIPPING' && state !== 'CANCELLING'">
                     <button class="header-btn" @click="downloadCsv('all')">Download all</button>
                     <button class="header-btn" @click="downloadCsv('new')">Download new</button>
                     <a href="/help" class="header-btn">Help</a>
@@ -122,30 +123,30 @@ try {
                 <h2>New disc — please enter details</h2>
                 <p class="body-text muted">Location ID: <strong x-text="locationIdInput"></strong></p>
                 <div class="form-group">
-                    <label for="acquire-title">Title <span style="color:var(--error)">*</span></label>
+                    <label for="acquire-author">Author / Artist</label>
                     <input
-                        id="acquire-title"
+                        id="acquire-author"
                         type="text"
-                        x-model="acquireTitle"
+                        x-model="acquireAuthor"
                         @keydown="_resetInactivityTimer()"
-                        @keydown.enter.prevent="document.getElementById('acquire-people')?.focus()"
-                        @keydown.tab.prevent="document.getElementById('acquire-people')?.focus()"
-                        placeholder="e.g. Annual Concert"
+                        @keydown.enter.prevent="document.getElementById('acquire-title')?.focus()"
+                        @keydown.tab.prevent="document.getElementById('acquire-title')?.focus()"
+                        placeholder="e.g. Senior Choir"
                         autocomplete="off"
                         autocorrect="off"
                         spellcheck="false"
                     >
                 </div>
                 <div class="form-group">
-                    <label for="acquire-people">People</label>
+                    <label for="acquire-title">Title</label>
                     <input
-                        id="acquire-people"
+                        id="acquire-title"
                         type="text"
-                        x-model="acquirePeople"
+                        x-model="acquireTitle"
                         @keydown="_resetInactivityTimer()"
                         @keydown.enter.prevent="document.getElementById('acquire-date')?.focus()"
                         @keydown.tab.prevent="document.getElementById('acquire-date')?.focus()"
-                        placeholder="e.g. Senior Choir"
+                        placeholder="e.g. Annual Concert"
                         autocomplete="off"
                         autocorrect="off"
                         spellcheck="false"
@@ -168,7 +169,7 @@ try {
                 </div>
                 <p class="inline-error" x-show="acquireError" x-text="acquireError" aria-live="polite"></p>
                 <div class="actions">
-                    <button class="btn btn-primary" @click="submitAcquisition()" :disabled="_busy || !acquireTitle.trim()">Continue</button>
+                    <button class="btn btn-primary" @click="submitAcquisition()" :disabled="_busy">Continue</button>
                     <button class="btn btn-ghost" @click="cancelAcquisition()">Cancel — eject disc</button>
                 </div>
             </div>

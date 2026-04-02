@@ -21,14 +21,14 @@ header('Content-Disposition: attachment; filename="local_catalogue_' . date('Ymd
 header('Cache-Control: no-cache, no-store');
 
 // Column header row
-echo "ID,Title,People,Date,DownloadDate\n";
+echo "ID,Author,Title,Date,DownloadDate\n";
 
 if (!file_exists($csvFile)) {
     exit;
 }
 
 if ($mode === 'all') {
-    // Output all rows; trim the fixed-width DownloadDate field for cleanliness
+    // Output all rows; trim the DownloadDate field for cleanliness
     $fh = fopen($csvFile, 'r');
     if (!$fh) {
         exit;
@@ -37,7 +37,7 @@ if ($mode === 'all') {
         if (count($row) < 5) {
             continue;
         }
-        $row[4] = trim($row[4]); // trim the download date padding
+        $row[4] = trim($row[4]); // trim the download date
         $fields = array_map('csvQuoteField', $row);
         echo implode(',', $fields) . "\n";
     }
@@ -49,16 +49,16 @@ if ($mode === 'all') {
         exit;
     }
 
-    $newIds = [];
+    $dateStr = date('d/m/y H:i');
+    $newIds  = [];
     $newRows = [];
     while (($row = fgetcsv($fh)) !== false) {
         if (count($row) < 5) {
             continue;
         }
-        $downloadDate = $row[4]; // raw 16-byte field
-        if (trim($downloadDate) === '') {
+        if (trim($row[4]) === '') {
             $newIds[]  = trim($row[0]);
-            $row[4]    = ''; // output with blank download date
+            $row[4]    = $dateStr;
             $newRows[] = $row;
         }
     }
@@ -70,7 +70,6 @@ if ($mode === 'all') {
     }
 
     if (!empty($newIds)) {
-        $dateStr = date('d/m/y H:i'); // exactly 14 chars
         localCatalogueMarkDownloaded($csvFile, $newIds, $dateStr);
     }
 }
